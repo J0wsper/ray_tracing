@@ -23,16 +23,16 @@ Vector operator*(double c, Vector v) {
     return v;
 }
 Vector Vector::operator-(Vector v) const {
-    Vector* a = new Vector(this->x - v.x, this->y - v.y, this->z - v.z);
-    return *a;
+    Vector a = Vector(this->x - v.x, this->y - v.y, this->z - v.z);
+    return a;
 }
 Vector Vector::operator-() const {
-    Vector* a = new Vector((-1)*this->x,(-1)*this->y,(-1)*this->z);
-    return *a;
+    Vector a = Vector((-1)*this->x,(-1)*this->y,(-1)*this->z);
+    return a;
 }
 Vector Vector::operator+(Vector v) const {
-    Vector* a = new Vector(this->x + v.x, this->y + v.y, this->z + v.z);
-    return *a;
+    Vector a = Vector(this->x + v.x, this->y + v.y, this->z + v.z);
+    return a;
 }
 
 //Getters
@@ -124,8 +124,8 @@ double Color::get_blue() {
 
 //Operators
 Color Color::operator+(Color v) const {
-    Color* a = new Color(this->red + v.red, this->green + v.green, this->blue + v.blue);
-    return *a;
+    Color a = Color(this->red + v.red, this->green + v.green, this->blue + v.blue);
+    return a;
 }
 Color Color::operator+=(Color v) {
     this->red = this->red + v.red;
@@ -235,8 +235,8 @@ Scene::Scene(Vector cam, Vector light, Color back, double l_amb, double l_spec, 
     this->camera = cam;
     this->light = light;
     this->back = back;
-    this->arr = new Shape*[100]();
-    this->length = 0;
+    std::vector<std::shared_ptr<Shape>> shape_arr;
+    this->arr = std::move(shape_arr);
     this->l_amb = l_amb;
     this->l_spec = l_spec;
     this->l_spec_exp = l_spec_exp;
@@ -246,62 +246,48 @@ Scene::Scene(Vector cam, Vector light) {
     this->camera = cam;
     this->light = light;
     this->back = Color(135, 206, 235);
-    this->arr = new Shape*[100]();
-    this->length = 0;
+    std::vector<std::shared_ptr<Shape>> shape_arr;
+    this->arr = std::move(shape_arr);
     this->l_amb = 0.2;
     this->l_spec = 0.5;
     this->l_spec_exp = 8;
     this->max_refl = 6;
 }
-
-//Destructor
 Scene::~Scene() {
-    unsigned i = 0;
-    while (i < this->length) {
-
-        //This line
-        delete this->arr[i];
-        i++;
-    }
-    delete this->arr;
+    this->arr.clear();
 }
 
 //Methods
-void Scene::add_shape(Shape* s) {
-    this->arr[this->length] = s;
-    this->length++;
+void Scene::add_shape(std::shared_ptr<Shape> s) {
+    this->arr.push_back(s);
 }
 
 //This function will probably result in the most ungodly bugs ever. Watch out for it. It is dishonest
 Color Scene::get_ray_color(Ray r, unsigned refl_num) {
-    int i = 0;
-    std::vector<std::pair<Shape*, double>> col_arr;
-    while (this->arr[i] != nullptr) {
+    std::vector<std::pair<std::shared_ptr<Shape>, double>> col_arr;
+    for (unsigned i = 0; i < this->arr.size(); i++) {
 
         //The ray collided with this object.
         if (this->arr[i]->get_collision_time(r) > 0) {
-            std::pair<Shape*, double> pair (this->arr[i], this->arr[i]->get_collision_time(r));
+            std::pair<std::shared_ptr<Shape>, double> pair (this->arr[i], this->arr[i]->get_collision_time(r));
             col_arr.push_back(pair);
         }
-        i++;
     }
 
     //Check which of the objects the ray collided with was first. That will be its first color.
-    int len = col_arr.size();
+    unsigned len = col_arr.size();
 
     //If the ray didn't intersect anything, it hit the background.
     if (len == 0){
         return this->back;
     }
-    i = 0;
     double min_col = DBL_MAX;
-    Shape* first_shape = nullptr;
-    while (i < len) {
+    std::shared_ptr<Shape> first_shape = nullptr;
+    for (unsigned i = 0; i < len; i++) {
         if (col_arr[i].second < min_col) {
             min_col = col_arr[i].second;
             first_shape = col_arr[i].first;
         }
-        i++;
     }
 
     //Calculating important symbols

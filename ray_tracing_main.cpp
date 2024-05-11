@@ -57,14 +57,14 @@ int main() {
     //Creating the scene.
     Vector cam = Vector(0.5,-1.0,0.5);
     Scene test1 = Scene(cam, Vector(0.0, -0.5, 1.0));
-    Plane test2 = Plane(Color(255,255,255), 0, Vector(0,0,0), Vector(0,0,1));
-    Sphere test3 = Sphere(Color(255,0,0), 0.3, Vector(0.25, 0.45, 0.4), 0.4);
-    Sphere test4 = Sphere(Color(0,255,0), 0, Vector(1,1,0.25), 0.25);
-    Sphere test5 = Sphere(Color(0,0,255), 0.7, Vector(0.8,0.3,0.15), 0.15);
-    test1.add_shape(&test2);
-    test1.add_shape(&test3);
-    test1.add_shape(&test4);
-    test1.add_shape(&test5);
+    std::shared_ptr<Plane> test2 = std::make_shared<Plane>(Plane(Color(255,255,255), 0, Vector(0,0,0), Vector(0,0,1)));
+    std::shared_ptr<Sphere> test3 = std::make_shared<Sphere>(Sphere(Color(255,0,0), 0.3, Vector(0.25, 0.45, 0.4), 0.4));
+    std::shared_ptr<Sphere> test4 = std::make_shared<Sphere>(Sphere(Color(0,255,0), 0, Vector(1,1,0.25), 0.25));
+    std::shared_ptr<Sphere> test5 = std::make_shared<Sphere>(Sphere(Color(0,0,255), 0.7, Vector(0.8,0.3,0.15), 0.15));
+    test1.add_shape(test2);
+    test1.add_shape(test3);
+    test1.add_shape(test4);
+    test1.add_shape(test5);
 
     //Creating the Array2D and looping over the pixels.
     Array2D<Color> array = Array2D<Color>(512, 512);
@@ -78,16 +78,13 @@ int main() {
 
     write_ppm(array, "test.ppm");
 
-    Color top_left = array.get(0,0);
-    std::cout << top_left.get_red() << std::endl;
-    std::cout << top_left.get_green() << std::endl;
-    std::cout << top_left.get_blue() << std::endl;
-    
     return 0;
 
     /*
     TODO: One of my destructors causes a segmentation fault. Figure out which one.
 
     A: It's the fucking Scene destructor.
+
+    A2: No it isn't. It's something far more sinister.
     */
 }

@@ -123,7 +123,7 @@ private:
     Vector light;
     Color back;
     unsigned length;
-    Shape** arr;
+    std::vector<std::shared_ptr<Shape>> arr;
     double l_amb;
     double l_spec;
     unsigned l_spec_exp;
@@ -133,7 +133,7 @@ public:
     Scene(Vector, Vector, Color, double, double, double, double);
     Scene(Vector, Vector);
     ~Scene();
-    void add_shape(Shape*);
+    void add_shape(std::shared_ptr<Shape>);
     Color get_point_color(Vector);
 };
 
@@ -156,6 +156,7 @@ public:
         this->height = height;
     }
     Array2D(const Array2D&) = delete;
+    ~Array2D() = default;
     unsigned get_width() const {
         return this->width;
     }
