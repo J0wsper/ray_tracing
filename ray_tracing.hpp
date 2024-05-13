@@ -29,6 +29,7 @@ public:
     double dot_product(Vector) const;
     double magnitude() const;
     Vector project(Vector) const;
+    void normalize();
 
     //Operators
     Vector operator-(Vector) const;

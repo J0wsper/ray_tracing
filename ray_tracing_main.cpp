@@ -4,31 +4,6 @@
 #include <fstream>
 #include "ray_tracing.hpp"
 
-/*
-
-NOTES:
-
-PROBLEM 1: Okay for some reason everything is really fucking dark. I don't know why. Here are a few things I've tried:
-
-- Disabling reflections
-- Disabling the segment where I turn off specular light if an object is in shadow
-
-FIX: my types for l_amb and l_spec were unsigned instead of double.
-
-PROBLEM 2: All of my shapes look flat as shit. Here are a few things I've tried:
-
-- 
-
-FIX: Not discovered
-
-PROBLEM 3: Reflections are broken as hell. Here are a few things I've tried:
-
-- 
-
-FIX: Not discovered.
-
-*/
-
 
 void write_ppm(const Array2D<Color>& pixels, const std::string& filename) {
     std::ofstream out(filename, std::ios::binary | std::ios::out);
@@ -81,10 +56,14 @@ int main() {
     return 0;
 
     /*
-    TODO: One of my destructors causes a segmentation fault. Figure out which one.
+    TODO: 
 
-    A: It's the fucking Scene destructor.
+    - Fix reflections
+        - Reflections have strange noise that still needs to be fixed but reflections appear to be in the right place.
 
-    A2: No it isn't. It's something far more sinister.
+    - Add rectangles
+
+    - Add cylinders
+
     */
 }

@@ -72,6 +72,13 @@ Vector Vector::project(Vector v) const {
     double scalar = (this->dot_product(v))/(v.dot_product(v));
     return scalar*v;
 }
+void Vector::normalize() {
+    Vector v = Vector(this->x, this->y, this->z);
+    v = (1.0/v.magnitude())*v;
+    this->x = v.x;
+    this->y = v.y;
+    this->z = v.z;
+}
 
 
 
@@ -80,7 +87,9 @@ Vector Vector::project(Vector v) const {
 //Constructor. The default constructor is in the header.
 Ray::Ray(Vector start, Vector direct) {
     this->start = start;
-    this->direct = direct;
+
+    //Rays have normalized direction.
+    this->direct = (1.0/direct.magnitude())*direct;
 }
 
 //Getters
@@ -171,16 +180,20 @@ Sphere::Sphere(Color c, double ref, Vector v, double r) : Shape(c, ref) {
 
 //Redefined virtual methods
 double Sphere::get_collision_time(Ray r) const {
+    Vector m = r.get_start() - this->center;
     double a = r.get_direction().dot_product(r.get_direction());
-    double b = 2*(r.get_direction().dot_product(r.get_start()-this->center));
-    double c = (r.get_start() - this->center).dot_product(r.get_start() - this->center) - pow(this->radius, 2);
-    
+    double b = 2*(r.get_direction().dot_product(m));
+    double c = m.dot_product(m) - pow(this->radius, 2);
+    double discr = pow(b,2)-4*a*c;
+
     //Ensuring we don't get a negative value inside the square root.
-    if ((pow(b,2) - 4*a*c) < 0) {
+    if (discr < 0) {
         return -1;
     }
-    double t1 = ((-1)*b + sqrt(pow(b,2) - 4*a*c))/(2*a);
-    double t2 = ((-1)*b - sqrt(pow(b,2) - 4*a*c))/(2*a);
+
+    //Finding the smaller value.
+    double t1 = ((-1)*b + sqrt(discr))/(2*a);
+    double t2 = ((-1)*b - sqrt(discr))/(2*a);
     if (t1 == -0 || t2 == -0) {
         return 0;
     }
@@ -196,11 +209,10 @@ double Sphere::get_collision_time(Ray r) const {
     else {
         return t2;
     }
-}  
+}
 Vector Sphere::get_normal_vector(Vector v) const {
     return v - this->center;
 }
-
 
 
 //Can we pretend that airplanes in the night sky are like shooting stars
@@ -262,7 +274,7 @@ void Scene::add_shape(std::shared_ptr<Shape> s) {
     this->arr.push_back(s);
 }
 
-//This function will probably result in the most ungodly bugs ever. Watch out for it. It is dishonest
+//Primarily used for recursion purposes in reflections with get_point_color().
 Color Scene::get_ray_color(Ray r, unsigned refl_num) {
     std::vector<std::pair<std::shared_ptr<Shape>, double>> col_arr;
     for (unsigned i = 0; i < this->arr.size(); i++) {
@@ -290,47 +302,124 @@ Color Scene::get_ray_color(Ray r, unsigned refl_num) {
         }
     }
 
-    //Calculating important symbols
+
+    //calculating important symbols
+
+    //Intersection point.
     Vector inter = r.get_start() + first_shape->get_collision_time(r)*r.get_direction();
-    inter = (1.0/(inter.magnitude()))*inter;
-    Vector lt = (1.0/((this->light-inter).magnitude()))*(this->light - inter);
-    Vector n = first_shape->get_normal_vector(inter);
-    n = (1.0/n.magnitude())*n;
+    
+    //Surface normal.
+    Vector N = first_shape->get_normal_vector(inter);
+    N.normalize();
 
-    //Ambient light.
-    double ambient_factor = (this->l_amb)*(1.0-first_shape->get_reflectivity());
-    Color ray_amb = ambient_factor*(first_shape->get_color());
+    //Unit vector pointing from intersection point to light.
+    Vector L = this->light - inter;
+    L.normalize();
 
-    //Diffuse light
+    //Unit vector pointing from POV to intersection point.
+    Vector V = inter - this->camera;
+    V.normalize();
 
-    //Problem: both diffuse light and specular light are really small
-    double ray_dif_scalar = (1.0-ambient_factor)*(1.0-first_shape->get_reflectivity());
-    ray_dif_scalar *= std::max(0.0, n.dot_product(lt));
-    Color ray_dif = ray_dif_scalar*first_shape->get_color();
+    //Light reflection vector.
+    Vector R = r.get_direction() - 2*(r.get_direction().dot_product(N))*N;
+    R.normalize();
 
-    //Specular light
-    Vector h = lt+(1.0/(r.get_direction().magnitude()))*(-r.get_direction());
-    h = (1.0/(h.magnitude()))*h;
-    double ray_spec_scalar = this->l_spec * pow((std::max(0.0, h.dot_product(n))),this->l_spec_exp);
-    Color ray_spec = ray_spec_scalar * Color(255,255,255);
 
-    //Reflections
+    //Detects if the point is in shadow.
+    Ray S = Ray(inter+1e-6*L, L);
+    bool is_shadow = false;
+    std::vector<std::shared_ptr<Shape>>::iterator ptr;
+    for (ptr = this->arr.begin(); ptr < this->arr.end(); ptr++) {
+        if ((*ptr)->get_collision_time(S) > 1e-6) {
+            is_shadow = true;
+            break;
+        }
+    }
 
-    // We have to limit the maximum number of reflections somehow.
-    if (refl_num >= this->max_refl) {
-        return ray_amb + ray_dif + ray_spec;
+    //Ambient light
+    Color r_amb = this->l_amb*first_shape->get_color();
+
+    //Diffuse and specular light are not calculated if the point is in shadow
+    Color r_dif = Color();
+    Color r_spec = Color();
+    if (is_shadow == false) {
+
+        //Diffuse light
+        r_dif = (1-first_shape->get_reflectivity())*(std::max(0.0,N.dot_product(L)))*first_shape->get_color();
+
+        //Specular light
+        r_spec = this->l_spec*pow(std::max(0.0,R.dot_product(V)), this->l_spec_exp)*Color(255,255,255);
+    }
+
+    //TODO: Reflections have some strange noise. Fix it?
+
+    //Checks to see whether reflections should be applied.
+    if (refl_num >= this->max_refl || first_shape->get_reflectivity() == 0) {
+        return r_amb + r_dif + r_spec;
     }
     else {
-        Vector v = (1.0/(r.get_direction().magnitude()))*r.get_direction();
 
-        //I think the project method has bugs.
-        Vector dir = (-v+2*((-v)+(-v.project(n))));
-        Ray refl = Ray(inter, dir);
-        Color ray_refl = ((1.0-ambient_factor)*first_shape->get_reflectivity())*get_ray_color(refl, refl_num+1);
-        return ray_amb + ray_dif + ray_spec + ray_refl;
+        //Reflections
+        Ray refl = Ray(inter+1e-6*R, R);
+        Color r_refl = first_shape->get_reflectivity()*get_ray_color(refl, refl_num+1);
+        return r_amb + r_dif + r_spec + r_refl;
     }
+
+    // //Calculating important symbols
+
+    // //Inter is the intersection point of the ray with the first object.
+    // Vector inter = r.get_start() + first_shape->get_collision_time(r)*r.get_direction();
+
+    // //lt is the normalized vector pointing from the intersection to the light source.
+    // Vector lt = this->light - inter;
+    // lt.normalize();
+
+    // //n is the normal vector at the point of intersection.
+    // Vector n = first_shape->get_normal_vector(inter);
+    // n.normalize();
+
+    // //Ambient light.
+    // Color ray_amb = this->l_amb*(first_shape->get_color());
+
+    // Color ray_dif = Color(0,0,0);
+    // Color ray_spec = Color(0,0,0);
+
+    // //Checking first to see if we are in shadow.
+    // if (first_shape->get_collision_time(Ray(this->light, -lt)) != first_shape->get_collision_time(r)) {
+        
+    //     //Diffuse light
+    //     double ray_dif_scalar = this->l_amb*(1.0-first_shape->get_reflectivity());
+    //     ray_dif_scalar *= std::max(0.0, n.dot_product(lt));
+    //     ray_dif = ray_dif_scalar*first_shape->get_color();
+
+    //     //Specular light
+    //     Vector h = lt+(1.0/(r.get_direction().magnitude()))*(-r.get_direction());
+    //     h.normalize();
+    //     double ray_spec_scalar = this->l_spec * pow((std::max(0.0, h.dot_product(n))),this->l_spec_exp);
+    //     ray_spec = ray_spec_scalar * Color(255,255,255);   
+    // }
+
+    // return ray_amb + ray_dif + ray_spec;
+
+    // //Reflections
+
+    // return ray_amb + ray_dif + ray_spec;
+
+    //TODO: Work on reflections later. Something else is going on with ambient light.
+
+    // //Limiting the maximum number of reflections
+    // if (refl_num >= this->max_refl || first_shape->get_reflectivity() == 0) {
+    //     return ray_amb + ray_dif + ray_spec;
+    // }
+    // else {
+    //     Vector dir = r.get_direction()-(2*(r.get_direction().dot_product(n)))*n;
+    //     Ray refl = Ray(inter, dir);
+    //     Color ray_refl = ((1.0-ambient_factor)*first_shape->get_reflectivity())*get_ray_color(refl, refl_num+1);
+    //     return ray_amb + ray_dif + ray_spec + ray_refl;
+    // }
 } 
 
+//Primarily a wrapper function for get_ray_color().
 Color Scene::get_point_color(Vector p) {
     Vector dir = p - this->camera;
     Ray r = Ray(this->camera, dir);
