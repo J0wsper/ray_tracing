@@ -364,59 +364,6 @@ Color Scene::get_ray_color(Ray r, unsigned refl_num) {
         Color r_refl = first_shape->get_reflectivity()*get_ray_color(refl, refl_num+1);
         return r_amb + r_dif + r_spec + r_refl;
     }
-
-    // //Calculating important symbols
-
-    // //Inter is the intersection point of the ray with the first object.
-    // Vector inter = r.get_start() + first_shape->get_collision_time(r)*r.get_direction();
-
-    // //lt is the normalized vector pointing from the intersection to the light source.
-    // Vector lt = this->light - inter;
-    // lt.normalize();
-
-    // //n is the normal vector at the point of intersection.
-    // Vector n = first_shape->get_normal_vector(inter);
-    // n.normalize();
-
-    // //Ambient light.
-    // Color ray_amb = this->l_amb*(first_shape->get_color());
-
-    // Color ray_dif = Color(0,0,0);
-    // Color ray_spec = Color(0,0,0);
-
-    // //Checking first to see if we are in shadow.
-    // if (first_shape->get_collision_time(Ray(this->light, -lt)) != first_shape->get_collision_time(r)) {
-        
-    //     //Diffuse light
-    //     double ray_dif_scalar = this->l_amb*(1.0-first_shape->get_reflectivity());
-    //     ray_dif_scalar *= std::max(0.0, n.dot_product(lt));
-    //     ray_dif = ray_dif_scalar*first_shape->get_color();
-
-    //     //Specular light
-    //     Vector h = lt+(1.0/(r.get_direction().magnitude()))*(-r.get_direction());
-    //     h.normalize();
-    //     double ray_spec_scalar = this->l_spec * pow((std::max(0.0, h.dot_product(n))),this->l_spec_exp);
-    //     ray_spec = ray_spec_scalar * Color(255,255,255);   
-    // }
-
-    // return ray_amb + ray_dif + ray_spec;
-
-    // //Reflections
-
-    // return ray_amb + ray_dif + ray_spec;
-
-    //TODO: Work on reflections later. Something else is going on with ambient light.
-
-    // //Limiting the maximum number of reflections
-    // if (refl_num >= this->max_refl || first_shape->get_reflectivity() == 0) {
-    //     return ray_amb + ray_dif + ray_spec;
-    // }
-    // else {
-    //     Vector dir = r.get_direction()-(2*(r.get_direction().dot_product(n)))*n;
-    //     Ray refl = Ray(inter, dir);
-    //     Color ray_refl = ((1.0-ambient_factor)*first_shape->get_reflectivity())*get_ray_color(refl, refl_num+1);
-    //     return ray_amb + ray_dif + ray_spec + ray_refl;
-    // }
 } 
 
 //Primarily a wrapper function for get_ray_color().

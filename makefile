@@ -1,4 +1,4 @@
-CFLAGS= -g -Wall -Wextra  -O0
+CFLAGS= -g -Wall -Wextra -O0 -lstdc++
 
 ray_tracing_test: ray_tracing_main.o ray_tracing.o
 	g++ $(CFLAGS) -o ray_tracing_test ray_tracing_main.o ray_tracing.o
